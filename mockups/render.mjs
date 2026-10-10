@@ -57,7 +57,7 @@ const STYLES = {
     mermaid: {
       startOnLoad: false, look: 'classic', theme: 'base', fontFamily: 'Inter', markdownAutoWrap: false,
       themeVariables: {
-        fontFamily: 'Inter', fontSize: '26px',
+        fontFamily: 'Inter', fontSize: '24px',
         primaryColor: '#E9F0FF', primaryBorderColor: '#2F6FE4', primaryTextColor: '#16213A',
         lineColor: '#51607A', secondaryColor: '#FFFFFF', tertiaryColor: '#F5F7FB', edgeLabelBackground: '#F5F7FB',
       },
