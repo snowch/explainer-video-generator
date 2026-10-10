@@ -183,18 +183,19 @@ Mechanics that shape the pipeline:
 | Voices | 30 prebuilt studio voices, an extended library of hundreds, voice design from a natural-language persona, voice replication. | `hosts[].voice` becomes `gemini:<voice-name>`, for example `gemini:Kore`. |
 | Output | 24 kHz mono 16-bit WAV per unary request; raw PCM when streaming. | Scene WAVs are concatenated at render time. |
 | Timestamps | None. | Alignment is a separate step, below. |
-| Access | Interactions API; `google-genai >= 2.25.0` (Python) or `@google/genai >= 2.24.0`. | Needs a `GEMINI_API_KEY` in the environment. |
+| Access | Interactions API; plain REST from `pipeline/voice.py`, no SDK needed. | Needs `GEMINI_API_KEY` as an environment secret. The key is never pasted into a chat, a file in the repo, or a command line. |
 
-**Alignment.** Highlights and captions need word timings, and Gemini does not
-return them. Because the transcript is known, this is forced alignment, not
-transcription, and it is far easier. Options, in order of preference:
+**Alignment.** Highlights and captions need word timings, and Gemini TTS does
+not return them. Because the transcript is known, a recognition error costs at
+most one word's timing, never the alignment. Options, in order of preference:
 
-1. **WhisperX, locally.** Open source, word-level timestamps by aligning the
-   audio against the known transcript, free, fast enough on CPU for scene-length
-   clips. Default for the MVP.
-2. **Google Cloud Speech-to-Text with word time offsets.** Transcribe the
-   synthesised audio, then map transcript words onto script words with a diff.
-   Keeps the stack all-Google; paid per minute of audio.
+1. **Gemini 3.5 Transcribe with word-level timestamps, on the same key.**
+   `pipeline/align.py` sends the scene WAV to `gemini-3.5-transcribe` with
+   `timestamp_granularities: ["word"]` and the scene's own vocabulary as custom
+   vocabulary, then matches the transcript to the script tokens with a diff and
+   interpolates any gap. One vendor, one key, no local models. Default.
+2. **WhisperX, locally.** Open source forced alignment against the known
+   transcript, free, CPU-fast for scene-length clips. The offline fallback.
 3. **ElevenLabs Forced Alignment.** Audio plus transcript in, word timings out;
    the simplest API, but a second vendor.
 
@@ -308,8 +309,9 @@ Nothing it generates is shipped.
 ## Build order
 
 1. **MVP, one chapter end to end.** Ingest, script schema and lint, Gemini
-   multi-speaker synthesis per scene, WhisperX alignment, Remotion with three
-   scene types (`title`, `diagram` from Mermaid, `recap`), captions. Hand-write the first script to
+   multi-speaker synthesis per scene (`pipeline/voice.py`), word alignment
+   (`pipeline/align.py`), Remotion with three scene types (`title`, `diagram`
+   from Mermaid, `recap`), captions. Hand-write the first script to
    prove the production half before automating the drafting half.
 2. **Grounded drafting and the gate.** Claude draft with Citations; the
    deterministic cross-check; the judge; the audit report.
@@ -323,7 +325,7 @@ Nothing it generates is shipped.
 
 | # | Decision | Status |
 |---|----------|--------|
-| 1 | Voice engine | **Decided: Gemini TTS first** (`gemini-3.8-flash-tts`), with WhisperX for alignment. ElevenLabs and OpenAI stay behind the provider interface. |
+| 1 | Voice engine | **Decided: Gemini TTS first** (`gemini-3.8-flash-tts`), with Gemini 3.5 Transcribe word timestamps for alignment on the same key. ElevenLabs and OpenAI stay behind the provider interface. |
 | 2 | Visual identity: clean or hand-drawn diagrams | Open. Both looks are rendered from the same Mermaid source in `mockups/out/`, so the choice is a theme switch, not a source-format choice. Excalidraw remains available for freeform diagrams Mermaid cannot lay out. |
 | 3 | Where the book sources live | TBD. |
 | 4 | Whether decorative generated illustrations are allowed | Open. `mockups/out/scene-illustration-*.png` shows the scene type beside the no-illustration alternative, `scene-title-*.png`. |

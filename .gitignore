@@ -1,3 +1,7 @@
 node_modules/
 mockups/out/frames-*/
+out/
+*.key
+.env
+.env.*
 .DS_Store
