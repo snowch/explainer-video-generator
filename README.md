@@ -27,12 +27,17 @@ examples/      chapter-example.script.yaml shows the schema
 mockups/       frame renderer and rendered comparison frames and clips
 ```
 
-## Voice and alignment (needs `GEMINI_API_KEY`)
+## Voice and alignment (needs a Gemini API key)
 
-Two small, dependency-free Python steps turn a scene of the script into audio
-with word timings. The key is read from the environment only. In a Claude Code
-cloud session it goes in the environment's secrets; locally, export it in your
-shell. Never paste it into a chat or a file in this repo.
+Two small Python steps turn a scene of the script into audio with word timings.
+Never paste the key into a chat or a file in this repo. Supply it one of two ways:
+
+- **Claude Code cloud environment:** add a network secret, so the key never
+  enters the container. Header name `x-goog-api-key`, no prefix, the key as the
+  value, and `generativelanguage.googleapis.com` as the only allowed website.
+  Do not use the Bearer type: Google reads `Authorization: Bearer` as an OAuth
+  token and rejects the key with a 401. Leave `GEMINI_API_KEY` unset.
+- **Your own machine:** `export GEMINI_API_KEY=...` in your shell.
 
 ```
 python3 pipeline/voice.py examples/chapter-example.script.yaml --scene the-fix     # -> out/audio/the-fix.wav
@@ -50,13 +55,19 @@ follow the real audio. Both have offline modes (`--dry-run`, `--simulate`).
 ### Troubleshooting
 
 **HTTP 401 "Request had invalid authentication credentials. Expected OAuth 2
-access token", reason `API_KEY_SERVICE_BLOCKED`.** Google rejected a credential
-before it read the API key. If the same 401 comes back with no key, with a bogus
-key, and from unrelated Google APIs, a Google credential is being added
-somewhere on the network path, for example by a proxy that handles
-`*.googleapis.com` traffic. Fix that path, or run the two steps on a machine
-without it: they need only Python 3 and PyYAML (`pip install pyyaml`), and the
-WAV and alignment JSON they write are all the renderer needs.
+access token", reason `API_KEY_SERVICE_BLOCKED`.** The key reached Google as
+`Authorization: Bearer <key>`, which Google treats as an OAuth token and rejects
+before reading it. This is what a network secret of the Bearer type does. Change
+the secret's header to `x-goog-api-key` with no prefix. If it applies to
+`*.googleapis.com`, narrow it to `generativelanguage.googleapis.com`, because a
+Bearer secret on every Google host breaks every Google API, not just Gemini.
+
+**HTTP 403 "Method doesn't allow unregistered callers".** No key reached Google:
+set `GEMINI_API_KEY` or add the network secret.
+
+The steps need only Python 3 and PyYAML (`pip install pyyaml`), so they also run
+on any machine with the key; the WAV and alignment JSON they write are all the
+renderer needs.
 
 ## Mock-ups
 

@@ -183,7 +183,7 @@ Mechanics that shape the pipeline:
 | Voices | 30 prebuilt studio voices, an extended library of hundreds, voice design from a natural-language persona, voice replication. | `hosts[].voice` becomes `gemini:<voice-name>`, for example `gemini:Kore`. |
 | Output | 24 kHz mono 16-bit WAV per unary request; raw PCM when streaming. | Scene WAVs are concatenated at render time. |
 | Timestamps | None. | Alignment is a separate step, below. |
-| Access | Interactions API; plain REST from `pipeline/voice.py`, no SDK needed. | Needs `GEMINI_API_KEY` as an environment secret. The key is never pasted into a chat, a file in the repo, or a command line. |
+| Access | Interactions API; plain REST from `pipeline/voice.py`, no SDK needed. The key goes in the `x-goog-api-key` header; a `Bearer` token is rejected. | In Claude Code cloud environments, a network secret adds the header, so the key never enters the container. Locally, `GEMINI_API_KEY`. Never in a chat, the repo, or a command line. |
 
 **Alignment.** Highlights and captions need word timings, and Gemini TTS does
 not return them. Because the transcript is known, a recognition error costs at

@@ -4,7 +4,7 @@
   python3 pipeline/align.py examples/chapter-example.script.yaml --scene the-fix [--audio out/audio/the-fix.wav] [--out out/align]
   python3 pipeline/align.py examples/chapter-example.script.yaml --scene the-fix --simulate   # uniform timings, no API call
 
-Uses Gemini 3.5 Transcribe with word-level timestamps on the same GEMINI_API_KEY,
+Uses Gemini 3.5 Transcribe with word-level timestamps, keyed the same way as voice.py,
 then matches the transcript against the known script tokens. The script is the
 source of truth, so a recognition error costs at most one word's timing; the
 missing timing is interpolated from its neighbours.
@@ -23,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from scriptlib import line_display, load_script, norm, say_tokens, scene_by_id, tokens  # noqa: E402
-from voice import api_error  # noqa: E402
+from voice import api_error, api_key, headers  # noqa: E402
 
 API = "https://generativelanguage.googleapis.com/v1beta/interactions"
 UPLOAD = "https://generativelanguage.googleapis.com/upload/v1beta/files"
@@ -35,8 +35,7 @@ def wav_duration(path):
 
 
 def _post_json(url, body, key):
-    r = urllib.request.Request(url, data=json.dumps(body).encode(),
-                               headers={"x-goog-api-key": key, "Content-Type": "application/json"})
+    r = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers(key))
     with urllib.request.urlopen(r, timeout=300) as resp:
         return json.loads(resp.read())
 
@@ -45,7 +44,7 @@ def upload_file(path, key, mime="audio/wav"):
     """Files API resumable upload: start, then upload+finalize. Returns the file URI."""
     data = Path(path).read_bytes()
     start = urllib.request.Request(UPLOAD, data=json.dumps({"file": {"display_name": Path(path).name}}).encode(), headers={
-        "x-goog-api-key": key, "Content-Type": "application/json",
+        **headers(key),
         "X-Goog-Upload-Protocol": "resumable", "X-Goog-Upload-Command": "start",
         "X-Goog-Upload-Header-Content-Length": str(len(data)), "X-Goog-Upload-Header-Content-Type": mime,
     })
@@ -238,9 +237,7 @@ def main():
         timing, duration = simulate(script, scene, wav_duration(audio) if audio.exists() else None)
         result = build_alignment(script, scene, timing, duration, "simulated")
     else:
-        key = os.environ.get("GEMINI_API_KEY")
-        if not key:
-            raise SystemExit("GEMINI_API_KEY is not set. Add it as an environment secret, or use --simulate.")
+        key = api_key()
         if not audio.exists():
             raise SystemExit(f"{audio} not found; run pipeline/voice.py first")
         heard = transcribe(audio, key, sorted({t for t in script_tokens if len(t) > 3}), debug=args.debug)

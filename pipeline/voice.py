@@ -3,7 +3,11 @@
 
   python3 pipeline/voice.py examples/chapter-example.script.yaml [--scene the-fix] [--out out/audio] [--dry-run]
 
-Needs GEMINI_API_KEY in the environment: never in this file, never in git.
+The API key comes from one of two places, never from this file or from git:
+  - GEMINI_API_KEY in the environment, sent as the x-goog-api-key header; or
+  - the network: with GEMINI_API_KEY unset, requests go out without a key, so
+    something on the path must add it, such as a Claude Code network secret that
+    sends x-goog-api-key to generativelanguage.googleapis.com.
 The text sent to the engine is each line's `say`; delivery comes from the host's
 or the line's `style`, never from the transcript. Audio is cached by content
 hash, so editing one line re-synthesises one scene.
@@ -51,16 +55,45 @@ def build_request(script, scene):
     }
 
 
-PROXY_401_HINT = (
-    "\nHint: Google rejected a credential before reading the API key. If the same 401 comes back with no key,"
-    " a bogus key, and from unrelated Google APIs, a Google credential is being added somewhere on the network"
-    " path, for example by a proxy. See Troubleshooting in the README."
+HINT_BEARER = (
+    "\nHint: the key reached Google as an OAuth bearer token (Authorization: Bearer ...), which Google rejects"
+    " before reading it. Gemini API keys must arrive in the x-goog-api-key header with no prefix. If a network"
+    " secret adds the key, set its header name to x-goog-api-key, clear the Bearer prefix, and allow only"
+    " generativelanguage.googleapis.com. See Troubleshooting in the README."
 )
+HINT_NO_KEY = (
+    "\nHint: no API key reached Google. Set GEMINI_API_KEY, or add a network secret that sends the"
+    " x-goog-api-key header to generativelanguage.googleapis.com."
+)
+HINT_BAD_KEY = "\nHint: Google rejected the key itself. Check it, or create a new one, in Google AI Studio."
+
+
+def api_key():
+    """The key from the environment, or None when the network is expected to add it."""
+    key = os.environ.get("GEMINI_API_KEY") or None
+    if key is None and not getattr(api_key, "_noted", False):
+        api_key._noted = True
+        print("GEMINI_API_KEY is not set: sending requests without a key, so the network must add one.",
+              file=sys.stderr)
+    return key
+
+
+def headers(key, content_type="application/json"):
+    h = {"Content-Type": content_type} if content_type else {}
+    if key:
+        h["x-goog-api-key"] = key
+    return h
 
 
 def api_error(e):
     detail = e.read().decode(errors="replace")[:800]
-    hint = PROXY_401_HINT if e.code == 401 and "OAuth 2 access token" in detail else ""
+    hint = ""
+    if e.code == 401 and "OAuth 2 access token" in detail:
+        hint = HINT_BEARER
+    elif "unregistered callers" in detail or "API key is missing" in detail or "CREDENTIALS_MISSING" in detail:
+        hint = HINT_NO_KEY
+    elif "API_KEY_INVALID" in detail or "API key not valid" in detail:
+        hint = HINT_BAD_KEY
     return SystemExit(f"Gemini API error {e.code}: {detail}{hint}")
 
 
@@ -113,8 +146,7 @@ def to_wav(blobs):
 
 
 def synthesise(req, key):
-    r = urllib.request.Request(API, data=json.dumps(req).encode(),
-                               headers={"x-goog-api-key": key, "Content-Type": "application/json"})
+    r = urllib.request.Request(API, data=json.dumps(req).encode(), headers=headers(key))
     try:
         with urllib.request.urlopen(r, timeout=300) as resp:
             body = json.loads(resp.read())
@@ -141,9 +173,7 @@ def main():
     if not scenes:
         raise SystemExit(f"no scene {args.scene!r}")
 
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key and not args.dry_run:
-        raise SystemExit("GEMINI_API_KEY is not set. Add it as an environment secret, or use --dry-run.")
+    key = None if args.dry_run else api_key()
 
     for scene in scenes:
         req = build_request(script, scene)
