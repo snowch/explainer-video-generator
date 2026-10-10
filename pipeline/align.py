@@ -22,7 +22,8 @@ import wave
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from scriptlib import line_display, line_say, load_script, norm, scene_by_id, tokens  # noqa: E402
+from scriptlib import line_display, load_script, norm, say_tokens, scene_by_id, tokens  # noqa: E402
+from voice import api_error  # noqa: E402
 
 API = "https://generativelanguage.googleapis.com/v1beta/interactions"
 UPLOAD = "https://generativelanguage.googleapis.com/upload/v1beta/files"
@@ -68,14 +69,14 @@ def transcribe(audio_path, key, vocabulary, debug=False):
         body = _post_json(API, {"model": "gemini-3.5-transcribe", "input": [inline], "generation_config": config}, key)
     except urllib.error.HTTPError as e:
         if e.code not in (400, 413):
-            raise SystemExit(f"Gemini API error {e.code}: {e.read().decode()[:800]}")
+            raise api_error(e)
         uri = upload_file(audio_path, key)  # inline audio refused: go through the Files API
         try:
             body = _post_json(API, {"model": "gemini-3.5-transcribe",
                                     "input": [{"type": "audio", "uri": uri, "mime_type": "audio/wav"}],
                                     "generation_config": config}, key)
         except urllib.error.HTTPError as e2:
-            raise SystemExit(f"Gemini API error {e2.code}: {e2.read().decode()[:800]}")
+            raise api_error(e2)
     if debug:
         print(json.dumps(body, indent=1)[:3000], file=sys.stderr)
     words = extract_words(body)
@@ -84,32 +85,45 @@ def transcribe(audio_path, key, vocabulary, debug=False):
     return words
 
 
-def _seconds(v):
+def _seconds(v, key=""):
+    """A time value in seconds: 1.5, "1.5s", "1500ms", {"seconds": 1, "nanos": 5e8}, or *_ms keys."""
+    millis = "ms" in key.lower() or "milli" in key.lower()
+    if isinstance(v, bool):
+        raise ValueError(v)
     if isinstance(v, (int, float)):
-        return float(v)
+        return float(v) / 1000 if millis else float(v)
     if isinstance(v, str):
-        m = re.fullmatch(r"\s*([0-9.]+)\s*s?\s*", v)
+        m = re.fullmatch(r"\s*([0-9]*\.?[0-9]+)\s*(ms|s)?\s*", v)
         if m:
-            return float(m.group(1))
-    if isinstance(v, dict):  # {"seconds": 1, "nanos": 500000000}
+            x = float(m.group(1))
+            return x / 1000 if (m.group(2) == "ms" or (millis and not m.group(2))) else x
+    if isinstance(v, dict):
         return float(v.get("seconds", 0)) + float(v.get("nanos", 0)) / 1e9
     raise ValueError(f"unrecognised time value {v!r}")
 
 
+def _time_key(o, prefixes):
+    for k, v in o.items():
+        kl = k.lower()
+        if kl.startswith(prefixes) and not any(x in kl for x in ("index", "char", "byte")) \
+                and isinstance(v, (int, float, str, dict)):
+            return k
+    return None
+
+
 def extract_words(o, found=None):
-    """Collect every dict that looks like a timed word, whatever the surrounding shape."""
+    """Collect every dict that looks like one timed word, whatever the surrounding shape.
+    Segments (text with spaces) are descended into rather than taken as words."""
     if found is None:
         found = []
     if isinstance(o, dict):
-        text_key = next((k for k in ("word", "text", "token") if isinstance(o.get(k), str)), None)
-        start_key = next((k for k in ("start", "start_time", "start_offset", "startTime", "start_s") if k in o), None)
-        end_key = next((k for k in ("end", "end_time", "end_offset", "endTime", "end_s") if k in o), None)
-        if text_key and start_key and end_key and not any(isinstance(v, (list, dict)) for v in (o[start_key], o[end_key])) \
-                or (text_key and start_key and end_key and isinstance(o[start_key], dict)):
+        tk = next((k for k in ("word", "text", "token") if isinstance(o.get(k), str)), None)
+        sk, ek = _time_key(o, ("start", "begin")), _time_key(o, ("end",))
+        if tk and sk and ek and " " not in o[tk].strip():
             try:
-                found.append({"text": o[text_key], "start": _seconds(o[start_key]), "end": _seconds(o[end_key])})
+                found.append({"text": o[tk].strip(), "start": _seconds(o[sk], sk), "end": _seconds(o[ek], ek)})
                 return found
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
         for v in o.values():
             extract_words(v, found)
@@ -178,7 +192,7 @@ def build_alignment(script, scene, timing_per_token, duration, source):
     lines, pos = [], 0
     for idx, line in enumerate(scene["lines"]):
         disp = line_display(line, lexicon)
-        n = len(tokens(line_say(line, lexicon)))
+        n = len(say_tokens(line, lexicon))
         ts = timing_per_token[pos:pos + n]
         pos += n
         ws = chunk_words(disp, ts)
@@ -188,16 +202,20 @@ def build_alignment(script, scene, timing_per_token, duration, source):
     return {"scene": scene["id"], "duration": round(duration, 3), "source": source, "lines": lines}
 
 
-def simulate(script, scene, wps=2.6, gap=0.5):
+def simulate(script, scene, duration=None, wps=2.6, gap=0.5, lead=0.4, tail=0.3):
+    """Uniform word timings. Given a real audio duration, the timeline is stretched to fit it."""
     lexicon = script.get("pronunciation", {}) or {}
-    timing, t = [], 0.4
+    timing, t = [], lead
     for line in scene["lines"]:
-        n = len(tokens(line_say(line, lexicon)))
-        for _ in range(n):
+        for _ in say_tokens(line, lexicon):
             timing.append((t, t + 1 / wps))
             t += 1 / wps
         t += gap
-    return timing, t
+    natural_end = t - gap
+    if not duration:
+        return timing, natural_end + tail
+    k = max(0.1, (duration - tail - lead) / max(1e-6, natural_end - lead))
+    return [(lead + (s - lead) * k, lead + (e - lead) * k) for s, e in timing], duration
 
 
 def main():
@@ -213,13 +231,11 @@ def main():
     script = load_script(args.script)
     scene = scene_by_id(script, args.scene)
     lexicon = script.get("pronunciation", {}) or {}
-    say_tokens = [t for line in scene["lines"] for t in tokens(line_say(line, lexicon))]
+    script_tokens = [t for line in scene["lines"] for t in say_tokens(line, lexicon)]
     audio = Path(args.audio or f"out/audio/{scene['id']}.wav")
 
     if args.simulate:
-        timing, duration = simulate(script, scene)
-        if audio.exists():
-            duration = wav_duration(audio)
+        timing, duration = simulate(script, scene, wav_duration(audio) if audio.exists() else None)
         result = build_alignment(script, scene, timing, duration, "simulated")
     else:
         key = os.environ.get("GEMINI_API_KEY")
@@ -227,11 +243,11 @@ def main():
             raise SystemExit("GEMINI_API_KEY is not set. Add it as an environment secret, or use --simulate.")
         if not audio.exists():
             raise SystemExit(f"{audio} not found; run pipeline/voice.py first")
-        heard = transcribe(audio, key, sorted({t for t in say_tokens if len(t) > 3}), debug=args.debug)
-        timing, matched = match(say_tokens, heard)
+        heard = transcribe(audio, key, sorted({t for t in script_tokens if len(t) > 3}), debug=args.debug)
+        timing, matched = match(script_tokens, heard)
         result = build_alignment(script, scene, timing, wav_duration(audio), "gemini-3.5-transcribe")
-        result["matched_tokens"] = f"{matched}/{len(say_tokens)}"
-        print(f"matched {matched}/{len(say_tokens)} script tokens to transcript words")
+        result["matched_tokens"] = f"{matched}/{len(script_tokens)}"
+        print(f"matched {matched}/{len(script_tokens)} script tokens to transcript words")
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

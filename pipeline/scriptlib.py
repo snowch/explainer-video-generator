@@ -65,6 +65,11 @@ def line_say(line, lexicon):
     return apply_lexicon(line["text"], lexicon)
 
 
+def say_tokens(line, lexicon):
+    """Spoken words of a line: the `say` text without inline vocal tags such as <chuckle>."""
+    return tokens(strip_tags(line_say(line, lexicon)))
+
+
 def line_display(line, lexicon):
     return display_text(line["text"], lexicon)
 

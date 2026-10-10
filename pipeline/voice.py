@@ -10,10 +10,12 @@ hash, so editing one line re-synthesises one scene.
 """
 import argparse
 import base64
+import io
 import json
 import os
 import struct
 import sys
+import wave
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -49,28 +51,65 @@ def build_request(script, scene):
     }
 
 
-def find_audio(o):
-    """The audio block is wherever a large base64 `data` string sits in the response."""
+PROXY_401_HINT = (
+    "\nHint: Google rejected a credential before reading the API key. If the same 401 comes back with no key,"
+    " a bogus key, and from unrelated Google APIs, a Google credential is being added somewhere on the network"
+    " path, for example by a proxy. See Troubleshooting in the README."
+)
+
+
+def api_error(e):
+    detail = e.read().decode(errors="replace")[:800]
+    hint = PROXY_401_HINT if e.code == 401 and "OAuth 2 access token" in detail else ""
+    return SystemExit(f"Gemini API error {e.code}: {detail}{hint}")
+
+
+def collect_audio(o, found=None):
+    """Every base64 audio block in the response, in document order (steps[].content[].data)."""
+    if found is None:
+        found = []
     if isinstance(o, dict):
-        if isinstance(o.get("data"), str) and len(o["data"]) > 1000:
-            return o
+        data, mime = o.get("data"), str(o.get("mime_type") or o.get("mimeType") or "")
+        if isinstance(data, str) and (mime.startswith("audio") or len(data) > 1000):
+            found.append(base64.b64decode(data))
+            return found
         for v in o.values():
-            r = find_audio(v)
-            if r:
-                return r
-    if isinstance(o, list):
+            collect_audio(v, found)
+    elif isinstance(o, list):
         for v in o:
-            r = find_audio(v)
-            if r:
-                return r
-    return None
+            collect_audio(v, found)
+    return found
 
 
-def wav_wrap(pcm, rate=24000):
-    """Gemini returns WAV for unary requests; wrap raw 16-bit mono PCM if it does not."""
-    header = struct.pack("<4sI4s4sIHHIIHH4sI", b"RIFF", 36 + len(pcm), b"WAVE", b"fmt ", 16, 1, 1,
-                         rate, rate * 2, 2, 16, b"data", len(pcm))
-    return header + pcm
+def pcm_of(blob):
+    """(pcm, rate, channels, sample_width) for a WAV block, or for raw 24 kHz mono 16-bit PCM."""
+    if blob[:4] != b"RIFF":
+        return blob, 24000, 1, 2
+    try:
+        with wave.open(io.BytesIO(blob)) as w:
+            return w.readframes(w.getnframes()), w.getframerate(), w.getnchannels(), w.getsampwidth()
+    except wave.Error:  # unusual header: fall back to the fmt and data chunks
+        fmt = blob.find(b"fmt ")
+        channels, rate = struct.unpack_from("<HI", blob, fmt + 10)
+        width = struct.unpack_from("<H", blob, fmt + 22)[0] // 8
+        data = blob.find(b"data")
+        size = struct.unpack_from("<I", blob, data + 4)[0]
+        return blob[data + 8:data + 8 + size], rate, channels, width
+
+
+def to_wav(blobs):
+    parts = [pcm_of(b) for b in blobs]
+    fmt = parts[0][1:]
+    if any(p[1:] != fmt for p in parts):
+        raise SystemExit(f"audio blocks differ in format: {[p[1:] for p in parts]}")
+    rate, channels, width = fmt
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(channels)
+        w.setsampwidth(width)
+        w.setframerate(rate)
+        w.writeframes(b"".join(p[0] for p in parts))
+    return buf.getvalue()
 
 
 def synthesise(req, key):
@@ -80,12 +119,11 @@ def synthesise(req, key):
         with urllib.request.urlopen(r, timeout=300) as resp:
             body = json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        raise SystemExit(f"Gemini API error {e.code}: {e.read().decode()[:800]}")
-    blob = find_audio(body)
-    if not blob:
+        raise api_error(e)
+    blobs = collect_audio(body)
+    if not blobs:
         raise SystemExit("no audio in response: " + json.dumps(body)[:800])
-    raw = base64.b64decode(blob["data"])
-    return raw if raw[:4] == b"RIFF" else wav_wrap(raw)
+    return to_wav(blobs)
 
 
 def main():

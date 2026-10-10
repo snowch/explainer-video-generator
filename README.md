@@ -47,6 +47,17 @@ word-level timestamps from Gemini 3.5 Transcribe on the same key and matches
 them to the script, so captions, speaker switches and the diagram highlight
 follow the real audio. Both have offline modes (`--dry-run`, `--simulate`).
 
+### Troubleshooting
+
+**HTTP 401 "Request had invalid authentication credentials. Expected OAuth 2
+access token", reason `API_KEY_SERVICE_BLOCKED`.** Google rejected a credential
+before it read the API key. If the same 401 comes back with no key, with a bogus
+key, and from unrelated Google APIs, a Google credential is being added
+somewhere on the network path, for example by a proxy that handles
+`*.googleapis.com` traffic. Fix that path, or run the two steps on a machine
+without it: they need only Python 3 and PyYAML (`pip install pyyaml`), and the
+WAV and alignment JSON they write are all the renderer needs.
+
 ## Mock-ups
 
 `mockups/` renders real frames and short silent clips of the scene types so the
