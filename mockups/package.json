@@ -1,0 +1,16 @@
+{
+  "name": "explainer-mockups",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Renders static and animated frame mock-ups of scene types for the design discussion.",
+  "scripts": {
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "@fontsource/caveat": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/kalam": "^5.3.0",
+    "mermaid": "^11.17.2"
+  }
+}

@@ -1,0 +1,7 @@
+%% Scene "the-fix": the write-ahead log flips the order of writes.
+%% Node ids (app, db, log, pages) are what the script's reveal/highlight fields reference.
+flowchart LR
+  app["Application"] -- "1  write(x)" --> db["Database"]
+  db -- "2  append + fsync" --> log[/"Write-ahead log"/]
+  log -- "3  ack" --> app
+  db -. "4  apply later,<br/>in batches" .-> pages["Data pages"]

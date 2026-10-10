@@ -141,7 +141,9 @@ Each scene declares one `visual`. Supported types:
 | `illustration` | optional, decorative only, from a prompt an author wrote | still, slow zoom                    |
 
 Authors own the diagram sources. The drafter may propose a Mermaid diagram, but
-it is reviewed in the same PR as the script. Generated imagery is permitted only
+it is reviewed in the same PR as the script. Mermaid 11 renders the same source
+in either a classic look or a hand-drawn look, so the clean-versus-sketch
+decision is a theme setting rather than a choice of source format. Generated imagery is permitted only
 in `illustration` scenes, is never used for anything that carries information,
 and is labelled decorative in the audit report. If you want the hand-drawn charm
 of NotebookLM's whiteboard style, Excalidraw sources plus a rough.js render give
@@ -153,31 +155,86 @@ rather than slide-like.
 
 ### 6. Voice: the TTS reads the script verbatim
 
-Whatever engine you choose, the only content it ever receives is the approved
-script, so this stage carries no truthfulness risk. The choice is about delivery
-quality, cost, and timestamps.
+Decision (October 2026): start with Gemini TTS. Whatever engine is used, the
+only content it ever receives is the approved script, so this stage carries no
+truthfulness risk; the choice is about delivery quality, cost, and timestamps.
 
-| Option | Multi-speaker | Delivery control | Timestamps | Notes |
-|--------|---------------|------------------|------------|-------|
-| ElevenLabs Eleven v3, Text to Dialogue | Yes, several speakers in one request | Inline audio tags such as `[thoughtful]`, `[laughs]` | Yes: `convert-with-timestamps` returns alignment | Keep each request at or under about 2,000 characters; one scene per request fits this naturally. Best "engaging hosts" quality. |
-| Gemini TTS (`gemini-2.5-pro-tts`, `gemini-2.5-flash-tts`, `gemini-3.1-flash-tts-preview`) | Two speakers per request | Natural-language style prompt plus inline tags | No | Cheaper. Get word timings afterwards with ElevenLabs Forced Alignment (audio plus transcript in, word timings out) or WhisperX locally. |
-| OpenAI `gpt-4o-mini-tts` | One voice per request | `instructions` field | No | Fallback. Synthesise per line and stitch. |
+**Gemini 3.8 TTS** is the current generation and fits this project unusually
+well. Google's documentation states that it treats the text field strictly as a
+verbatim transcript. Delivery is controlled outside the transcript:
 
-Recommendation: ElevenLabs v3 dialogue for the hosts, because it gives
-multi-speaker delivery and alignment in one call. Keep the provider behind an
-interface so a chapter can be re-voiced with Gemini for cost or for languages.
+- a `speech_metadata.style` per turn for sustained delivery, such as "warm and
+  curious" or "measured, explaining";
+- inline angle-bracket tags for point-in-time events, such as `<breath>`,
+  `<chuckle>` or `<sigh>`, placed exactly where the sound occurs;
+- CAPITALS for emphasis on a word;
+- a conversational mode in the speech config for natural turn-taking cadence.
 
-Supporting mechanics:
+Nothing in the transcript is interpreted as an instruction, which is exactly
+the property the gate relies on: what passed review is what gets spoken.
 
-- **Pronunciation lexicon.** A per-project map for jargon and product names,
-  applied before synthesis (ElevenLabs pronunciation dictionaries, or phonetic
-  respelling in the text). This fixes the "mispronounced name" problem that
-  NotebookLM cannot.
-- **Caching.** Audio is cached by hash of (line text, voice, settings). Editing
+Mechanics that shape the pipeline:
+
+| Topic | What the API gives us | Consequence for the design |
+|-------|-----------------------|----------------------------|
+| Models | `gemini-3.8-flash-tts` for maximum fidelity, nuanced acting and complex multi-speaker dialogue; `gemini-3.8-flash-lite-tts` as the cheaper bulk option. Same schema, one-parameter switch. | Start on Flash; measure; decide whether Lite is good enough for draft renders. |
+| Speakers | Up to two speakers per request with prebuilt voices. Each turn is a separate text item carrying its `speaker` and `style`. | One scene is one request. Two hosts is the maximum, which the script schema already assumes. |
+| Custom voices | Designed (`voice_...`) or replicated voices cannot share a multi-speaker request. | If we ever design bespoke host voices, synthesise per turn and concatenate the 24 kHz PCM ourselves. |
+| Voices | 30 prebuilt studio voices, an extended library of hundreds, voice design from a natural-language persona, voice replication. | `hosts[].voice` becomes `gemini:<voice-name>`, for example `gemini:Kore`. |
+| Output | 24 kHz mono 16-bit WAV per unary request; raw PCM when streaming. | Scene WAVs are concatenated at render time. |
+| Timestamps | None. | Alignment is a separate step, below. |
+| Access | Interactions API; `google-genai >= 2.25.0` (Python) or `@google/genai >= 2.24.0`. | Needs a `GEMINI_API_KEY` in the environment. |
+
+**Alignment.** Highlights and captions need word timings, and Gemini does not
+return them. Because the transcript is known, this is forced alignment, not
+transcription, and it is far easier. Options, in order of preference:
+
+1. **WhisperX, locally.** Open source, word-level timestamps by aligning the
+   audio against the known transcript, free, fast enough on CPU for scene-length
+   clips. Default for the MVP.
+2. **Google Cloud Speech-to-Text with word time offsets.** Transcribe the
+   synthesised audio, then map transcript words onto script words with a diff.
+   Keeps the stack all-Google; paid per minute of audio.
+3. **ElevenLabs Forced Alignment.** Audio plus transcript in, word timings out;
+   the simplest API, but a second vendor.
+
+**Pronunciation.** Gemini 3.8 has no lexicon of its own, and the transcript is
+read as written. So a line has two texts: `text`, which reviewers approve, the
+gate checks, and captions display; and `say`, what the engine receives, which
+is `text` with the project lexicon applied (for example "fsync" to "F-sync").
+Alignment runs against `say`, and timings are mapped back to `text` by token
+position, which the lexicon keeps one-to-one.
+
+**Script to request mapping**, one scene per request:
+
+```json
+{
+  "model": "gemini-3.8-flash-tts",
+  "input": [{ "type": "user_input", "content": [
+    { "type": "text", "text": "Isn't that just doing the slow thing twice?",
+      "annotations": [{ "type": "speech_metadata", "speaker": "Maya", "style": "curious, a little sceptical" }] },
+    { "type": "text", "text": "Appending to one sequential file is far cheaper than updating scattered pages.",
+      "annotations": [{ "type": "speech_metadata", "speaker": "Sam", "style": "measured, explaining" }] }
+  ]}],
+  "response_format": { "type": "audio" },
+  "generation_config": { "speech_config": { "mode": "conversational",
+    "speakers": [ { "speaker": "Maya", "voice": "Kore" }, { "speaker": "Sam", "voice": "Puck" } ] } }
+}
+```
+
+**Fallbacks kept behind the provider interface:** ElevenLabs Eleven v3 Text to
+Dialogue (multi-speaker, audio tags, timestamps in the same call) and OpenAI
+`gpt-4o-mini-tts` with an `instructions` field (one voice per request, stitched
+per line). Switching engines must never touch the script.
+
+Supporting mechanics, engine-independent:
+
+- **Caching.** Audio is cached by hash of (`say`, voice, style, model). Editing
   one line re-synthesises one line.
 - **Localisation for free.** Because the script is the source of truth, a
   translated script through the same pipeline yields the same video in another
-  language, with the same diagrams and the same audit trail.
+  language, with the same diagrams and the same audit trail. Gemini 3.8 TTS
+  auto-detects the language of the transcript across 130 or more languages.
 
 ### 7. Render: Remotion
 
@@ -237,8 +294,9 @@ Invariants the gate enforces:
 - `kind: claim` requires `source`; `bridge` and `question` forbid new facts.
 - `source` must resolve to a span in the named document.
 - `highlight` and `reveal` ids must exist in the diagram source.
-- Delivery tags in square brackets are stripped before the faithfulness check
-  and before the cross-check, so they never count as content.
+- Inline vocal tags in angle brackets, such as `<chuckle>`, and the per-line
+  `style` field are stripped before the faithfulness check, the cross-check and
+  the captions, so they never count as content.
 
 ## What to still use NotebookLM for
 
@@ -249,27 +307,26 @@ Nothing it generates is shipped.
 
 ## Build order
 
-1. **MVP, one chapter end to end.** Ingest, script schema and lint, ElevenLabs
-   dialogue with timestamps, Remotion with three scene types (`title`,
-   `diagram` from Mermaid, `recap`), captions. Hand-write the first script to
+1. **MVP, one chapter end to end.** Ingest, script schema and lint, Gemini
+   multi-speaker synthesis per scene, WhisperX alignment, Remotion with three
+   scene types (`title`, `diagram` from Mermaid, `recap`), captions. Hand-write the first script to
    prove the production half before automating the drafting half.
 2. **Grounded drafting and the gate.** Claude draft with Citations; the
    deterministic cross-check; the judge; the audit report.
 3. **Visual depth.** Highlight keyed to word timestamps, Excalidraw and rough.js
    style, `figure`, `code`, `quote` scenes, theme and transitions, music bed,
    intro and outro.
-4. **Scale and options.** Provider abstraction with Gemini TTS as the second
+4. **Scale and options.** Provider abstraction with ElevenLabs as the second
    engine, audio caching, batch rendering, localisation, optional avatars.
 
 ## Decisions for the team
 
-- Voice engine: ElevenLabs v3 for quality and alignment, or Gemini for cost?
-  Recommendation above is ElevenLabs for the hosts.
-- Visual identity: clean Mermaid or hand-drawn Excalidraw? Theme, fonts, colour.
-- Where the book sources live: in this repo, a submodule, or fetched at build.
-- Remotion licensing, given team size.
-- Whether `illustration` scenes are wanted at all, since they are the one place
-  generated imagery enters the video.
+| # | Decision | Status |
+|---|----------|--------|
+| 1 | Voice engine | **Decided: Gemini TTS first** (`gemini-3.8-flash-tts`), with WhisperX for alignment. ElevenLabs and OpenAI stay behind the provider interface. |
+| 2 | Visual identity: clean or hand-drawn diagrams | Open. Both looks are rendered from the same Mermaid source in `mockups/out/`, so the choice is a theme switch, not a source-format choice. Excalidraw remains available for freeform diagrams Mermaid cannot lay out. |
+| 3 | Where the book sources live | TBD. |
+| 4 | Whether decorative generated illustrations are allowed | Open. `mockups/out/scene-illustration-*.png` shows the scene type beside the no-illustration alternative, `scene-title-*.png`. |
 
 ## Sources
 

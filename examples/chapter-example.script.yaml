@@ -24,13 +24,21 @@ hosts:
   A:
     name: Maya
     role: asks the questions a first-time reader would ask
-    voice: elevenlabs:<voice-id-a>    # provider:voice-id
+    voice: gemini:Kore            # provider:voice-name (Gemini prebuilt studio voice)
+    style: warm, curious, quick   # default speech_metadata.style for this host
   B:
     name: Sam
     role: explains; stays inside the chapter; never speculates
-    voice: elevenlabs:<voice-id-b>
+    voice: gemini:Puck
+    style: measured, grounded, explaining
 
-pronunciation:               # project lexicon applied before synthesis
+voice:
+  provider: gemini
+  model: gemini-3.8-flash-tts   # or gemini-3.8-flash-lite-tts for cheaper draft renders
+  mode: conversational          # natural turn-taking cadence between the two hosts
+  alignment: whisperx           # Gemini returns no word timestamps; align afterwards
+
+pronunciation:               # project lexicon; produces each line's `say` text from its `text`
   fsync: "F-sync"
   WAL: "wall"
 
@@ -42,11 +50,23 @@ scenes:
     lines:
       - speaker: A
         kind: bridge          # conversational glue: no source required, no facts allowed
-        text: "[curious] Okay, here's the thing I've never understood. I hit save, the lights go out. Is my data there or not?"
+        style: a little exasperated, thinking out loud   # overrides the host default for this turn
+        text: "Okay, here's the thing I've never understood. I hit save, the lights go out. Is my data there or not?"
       - speaker: B
         kind: claim           # factual: must cite a span and pass the gate
         source: ch03-durability#p2
         text: "It depends on whether the write reached durable storage before the crash. That's the whole problem this chapter is about."
+
+  # Alternative to `hook` if decision 4 allows decorative imagery. The prompt is authored,
+  # the image carries no information, and the audit report labels the scene decorative.
+  # - id: hook
+  #   visual:
+  #     type: illustration
+  #     decorative: true
+  #     prompt: "Flat vector illustration, night, a laptop on a desk showing a document mid-save,
+  #              the desk lamp off, a power cord pulled from the wall socket with a small spark."
+  #     text: "What happens to your data when the power goes out?"
+  #   lines: (same as hook)
 
   - id: the-problem
     visual:
@@ -66,13 +86,14 @@ scenes:
         kind: claim
         source: ch03-durability#p5
         highlight: disk
-        text: "[measured] Right. Anything only in memory at crash time is gone. Anything that reached disk survives."
+        text: "Right. Anything only in memory at crash time is GONE. Anything that reached disk survives."
+        # CAPITALS mark vocal emphasis; captions render the word normally.
 
   - id: the-fix
     visual:
       type: diagram
-      src: diagrams/ch03/wal-flow.excalidraw
-      reveal: [write, log, ack, apply]
+      src: diagrams/ch03/wal-flow.mmd      # Mermaid; the theme decides classic or hand-drawn rendering
+      reveal: [app, db, log, pages]
     lines:
       - speaker: B
         kind: claim
@@ -109,7 +130,9 @@ scenes:
     lines:
       - speaker: A
         kind: bridge
-        text: "[warm] So: log it first, apply it later, replay it if things go wrong."
+        style: warm, summing up
+        text: "<chuckle> So: log it first, apply it later, replay it if things go wrong."
+        # <angle-bracket> tags are point-in-time vocal events; the gate and captions strip them.
       - speaker: B
         kind: claim
         source: ch03-durability#p12

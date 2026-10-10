@@ -1,0 +1,5 @@
+%% Scene "the-problem": memory is fast but volatile, disk is slow but durable.
+%% Node ids (app, buffer, disk) are what the script's reveal/highlight fields reference.
+flowchart LR
+  app["Application"] -- "write" --> buffer["Memory buffer<br/>fast · volatile"]
+  buffer -- "flush, later" --> disk[("Disk<br/>slow · durable")]

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" role="img" aria-label="A laptop mid-save on a desk as the lights go out">
+  <!-- Hand-made flat-vector stand-in for an `illustration` scene. In production this slot would be
+       filled by an image model from a prompt the author wrote, or by a commissioned/stock vector. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1A2B4F"/><stop offset="1" stop-color="#0B1326"/></linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#8FD3FF" stop-opacity=".5"/><stop offset="1" stop-color="#8FD3FF" stop-opacity="0"/></radialGradient>
+    <linearGradient id="wood" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#5A4034"/><stop offset="1" stop-color="#3B2A22"/></linearGradient>
+  </defs>
+  <rect width="1000" height="560" fill="url(#sky)"/>
+  <!-- window with a crescent moon -->
+  <rect x="640" y="60" width="240" height="200" rx="10" fill="#0A1224" stroke="#2A3B61" stroke-width="6"/>
+  <line x1="760" y1="60" x2="760" y2="260" stroke="#2A3B61" stroke-width="6"/>
+  <line x1="640" y1="160" x2="880" y2="160" stroke="#2A3B61" stroke-width="6"/>
+  <circle cx="700" cy="118" r="22" fill="#F3E9C6"/>
+  <circle cx="712" cy="110" r="20" fill="#0A1224"/>
+  <!-- floor -->
+  <rect x="0" y="470" width="1000" height="90" fill="#0A1120"/>
+  <!-- desk -->
+  <rect x="120" y="400" width="760" height="22" rx="6" fill="url(#wood)"/>
+  <rect x="160" y="422" width="20" height="60" fill="#2E2119"/>
+  <rect x="820" y="422" width="20" height="60" fill="#2E2119"/>
+  <!-- the laptop screen is the only light left in the room -->
+  <ellipse cx="450" cy="330" rx="280" ry="160" fill="url(#glow)"/>
+  <rect x="300" y="190" width="300" height="200" rx="14" fill="#2B3448" stroke="#4A5775" stroke-width="4"/>
+  <rect x="316" y="206" width="268" height="168" rx="6" fill="#E9F2FF"/>
+  <rect x="340" y="226" width="150" height="10" rx="5" fill="#9FB3D6"/>
+  <rect x="340" y="248" width="220" height="8" rx="4" fill="#C9D6EC"/>
+  <rect x="340" y="266" width="200" height="8" rx="4" fill="#C9D6EC"/>
+  <rect x="340" y="284" width="210" height="8" rx="4" fill="#C9D6EC"/>
+  <rect x="340" y="302" width="120" height="8" rx="4" fill="#C9D6EC"/>
+  <text x="340" y="331" font-family="Inter, sans-serif" font-size="13" font-weight="600" fill="#5B6578">Saving…</text>
+  <rect x="340" y="338" width="220" height="16" rx="8" fill="#D5DEEF"/>
+  <rect x="340" y="338" width="152" height="16" rx="8" fill="#2F6FE4"/>
+  <path d="M270 392 H630 L612 414 H288 Z" fill="#3A4660"/>
+  <!-- desk lamp, switched off -->
+  <ellipse cx="707" cy="400" rx="46" ry="10" fill="#2C3350"/>
+  <rect x="700" y="300" width="14" height="100" fill="#3C4460"/>
+  <path d="M707 300 Q707 230 770 230" stroke="#3C4460" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <path d="M740 232 L800 232 L820 282 L720 282 Z" fill="#4A5270"/>
+  <circle cx="770" cy="276" r="12" fill="#6B7390"/>
+  <!-- wall socket, cord pulled out, a spark -->
+  <rect x="900" y="300" width="56" height="70" rx="8" fill="#19233E" stroke="#2A3B61" stroke-width="4"/>
+  <rect x="918" y="318" width="8" height="18" fill="#0A1224"/>
+  <rect x="932" y="318" width="8" height="18" fill="#0A1224"/>
+  <path d="M640 400 C 760 400, 790 360, 866 350" stroke="#9AA6C4" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <rect x="860" y="336" width="26" height="28" rx="5" fill="#C9D2E6"/>
+  <path d="M905 322 L889 348 L901 348 L893 372 L915 340 L903 340 Z" fill="#FFD166"/>
+</svg>

@@ -1,0 +1,3 @@
+node_modules/
+mockups/out/frames-*/
+.DS_Store
