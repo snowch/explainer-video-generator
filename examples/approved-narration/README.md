@@ -2,7 +2,7 @@
 
 This is a portable version of the single-narrator workflow used for *Why we
 misinterpret people*. Read [the agent runbook](../../docs/agent-video-workflow.md)
-first. It is separate from the repository's Gemini/YAML prototype.
+first. This is the repository's supported production workflow.
 
 The renderer contains the layouts and wording for **this example**. It is not
 a universal JSON-to-video engine. For another script, adapt the `kind` handlers,
