@@ -1,7 +1,12 @@
 # Explainer video generator: design
 
-Status: proposal (October 2026). Nothing is implemented yet; this document is the
-plan and the reasoning behind it.
+Status: proposal (October 2026). This document describes the proposed Gemini/
+Remotion architecture; voice/alignment scripts and mock-ups now exist. For the
+completed alternative single-narrator approach, see
+[Agent workflow: authored, narrated explainer videos](agent-video-workflow.md).
+That guide includes actual-audio review and multi-token pronunciation alignment;
+these should inform any future integration rather than assuming synthesis
+cannot introduce delivery errors.
 
 ## The problem with NotebookLM for book content
 
@@ -364,3 +369,4 @@ Rendering and diagrams:
 Grounding:
 
 - Anthropic, Citations API: https://anthropic.com/news/introducing-citations-api
+

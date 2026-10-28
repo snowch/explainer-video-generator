@@ -14,6 +14,20 @@ Read [docs/design.md](docs/design.md) for the full design: why NotebookLM cannot
 be steered enough for authored books, the pipeline, the script schema, the
 faithfulness gate, engine choices, and the build order.
 
+## Completed single-narrator workflow
+
+For a supplied script and a reproducible scene-by-scene build, start with
+[the agent video workflow](docs/agent-video-workflow.md) and
+[the runnable approved-narration example](examples/approved-narration/README.md).
+They record the **5:29 “Why we misinterpret people”** production: preserving the
+script, pronunciation-aware Edge neural speech, audio-derived timing, controlled
+Pillow/FFmpeg visuals, actual-audio checks, and closing-card edits that preserve
+the original compressed audio and earlier video.
+
+This is an alternative reference path, not an integration into the Gemini/
+Remotion prototype below. [AGENTS.md](AGENTS.md) gives the starting instructions
+for agents working on a video.
+
 ## Planned layout
 
 ```
@@ -103,7 +117,10 @@ the pipeline.
 
 ## Status
 
-Design stage with visual mock-ups. Nothing in the pipeline runs yet. First
-milestone is one chapter end to end with a hand-written script, Gemini
-multi-speaker audio, WhisperX alignment, and a Remotion composition with three
-scene types.
+The Gemini path has voice/alignment scripts and visual mock-ups; the full
+Remotion application and authored-content gate remain planned. The separate
+[approved-narration reference](examples/approved-narration/README.md) captures an
+end-to-end single-narrator production using Edge speech and FFmpeg. It includes
+an example-specific renderer, audio review helper, and verified partial-update
+workflow.
+
