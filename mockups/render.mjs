@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // Renders mock-up frames (PNG) and short silent clips (MP4) of scene types in two
-// visual styles, so the team can compare looks before any pipeline code exists.
+// visual styles. These earlier experiments are separate from the production renderer.
 //
 //   node render.mjs                 # stills for every scene x style -> out/*.png
 //   node render.mjs --video         # also 10 s draw-on clips of the diagram scene -> out/*.mp4
 //   node render.mjs --only=diagram  # restrict to one scene id
 //   node render.mjs --video --only=diagram --align=out/align/the-fix.json --audio=out/audio/the-fix.wav
-//                                   # real timings and sound from pipeline/voice.py + pipeline/align.py
+//                                   # optional externally supplied timing JSON and scene WAV
 //
 // Everything is inlined into one HTML document (fonts as data URIs, Mermaid from
 // node_modules) so the page needs no network and no file:// cross-loading. A frame
@@ -33,8 +33,8 @@ const flag = (name) => args.includes(name);
 const opt = (name) => args.find((a) => a.startsWith(name + '='))?.slice(name.length + 1);
 const DO_VIDEO = flag('--video');
 const ONLY = opt('--only');
-const ALIGN = opt('--align');   // alignment JSON from pipeline/align.py: real line and word timings
-const AUDIO = opt('--audio');   // scene WAV from pipeline/voice.py: muxed into the clip
+const ALIGN = opt('--align');   // external alignment JSON in this mock-up's line/word format
+const AUDIO = opt('--audio');   // externally supplied scene WAV: muxed into the clip
 const OUT = opt('--out');       // output directory; default mockups/out
 const FPS = 30;
 
@@ -89,8 +89,9 @@ const HOSTS = [{ name: 'Maya', initial: 'M' }, { name: 'Sam', initial: 'S' }];
 
 const HOOK_LINE = "Okay, here's the thing I've never understood. I hit save, the lights go out. Is my data there or not?";
 
-// The lines of scene "the-fix" from examples/chapter-example.script.yaml. With --align the
-// timings come from pipeline/align.py; otherwise words are paced uniformly.
+// Historical sample dialogue, retained for visual comparison. With --align,
+// timings come from external JSON; otherwise words are paced uniformly.
+// The production example's timings.json uses a different format.
 const THE_FIX_LINES = [
   { speaker: 'Sam', highlight: 'log', text: 'The write-ahead log flips the order. Before the database touches its main data files, it appends a description of the change to a sequential log and forces that to disk.' },
   { speaker: 'Maya', highlight: null, text: "Isn't that just doing the slow thing twice?" },

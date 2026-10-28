@@ -1,7 +1,7 @@
 # Agent workflow: authored, narrated explainer videos
 
 This is the production approach used for **Why we misinterpret people** on
-28 October 2026. The final video was **5:29**, with the user's 775-word narration,
+28 October 2026. The original reference export was **5:29**, with the user's 775-word narration,
 28 scene clips including the closing hold, optional captions, and a cream,
 dark-green, and sage palette. The final requested polish was the book URL and
 copyright on the closing card; only that five-second scene was re-rendered.
@@ -12,18 +12,14 @@ rejected as rough. Improvement required a different speech engine, preserving
 the authored brief, checking the generated audio, removing irrelevant artwork,
 and adjusting the visuals to the speech.
 
-## Choose the appropriate path
+## Use the authored, single-narrator workflow
 
-| Path | Purpose | Entry points |
-| --- | --- | --- |
-| Existing Gemini prototype | Two-host dialogue and the repository's YAML contract | `pipeline/voice.py`, `pipeline/align.py`, `mockups/render.mjs` |
-| Completed reference approach | A supplied single-narrator script with controlled illustrated/diagram slides | [examples/approved-narration](../examples/approved-narration/README.md) |
-
-The reference example is intentionally independent of the proposed Remotion
-application and faithfulness gate. It does **not** implement that whole design,
-nor silently replace the repository's Gemini provider decision. Its renderer
-contains scene layouts for this particular example; adapting another book
-requires editing those layouts as well as the narration.
+Start with [examples/approved-narration](../examples/approved-narration/README.md):
+an authored script, Edge neural speech, provider word timings, and Pillow/FFmpeg
+visuals. This is the supported production path. The renderer contains layouts
+for this particular example; adapting another book requires editing those
+layouts as well as the narration. Source checks and review of the meaning across
+speech and images remain manual; no automated faithfulness gate is implemented.
 
 ## 1. Establish the content contract
 
@@ -54,7 +50,53 @@ The final `end` scene has empty text and a five-second visual hold.
 
 If drafting from a chapter instead, read the chapter first, attribute it, keep
 a claim-to-source trail, and distinguish the author's examples from new ones.
-Do not claim the proposal's automated faithfulness gate ran unless it did.
+Do not describe manual source checks as an automated faithfulness gate.
+
+### Match the narration to the topic and viewing context
+
+Read the actual chapter or other source before adapting the example. Record
+what the viewer should understand and what they should be able to do afterwards.
+Keep the source's meaning, qualifications, definitions and attribution. Use
+plain language and concrete situations; introduce a research paper by explaining
+who studied what, rather than referring to an unexplained “review”. Check that
+every new factual claim has support in the source or a checked reference.
+
+Decide whether the video stands alone or is embedded in a page. An embedded
+chapter video can begin directly with the example when the page already supplies
+its title and context. For this chapter, the requested opening became:
+
+> On Tuesday, your colleague Rowan says, “Your idea looks promising.”
+
+The fictional-example disclosure belongs in a visible caption beneath that
+embed: **“The examples in this video are fictional.”** Keep a clear transition
+between examples, such as **“Now consider a different situation.”** Do not remove
+the distinction between a fictional example and a documented event when changing
+the delivery format. For a standalone export, supply that context where the
+viewer will actually encounter it. These are contextual choices, not automatic
+edits to an approved script.
+
+### Map each scene before generating artwork
+
+Keep a short scene plan alongside the script. For each scene, record the source
+idea, exact narration, on-screen wording, illustration or diagram, and when it
+should appear. Identify what the viewer could wrongly infer from the image.
+This is a manual content check; the reference scripts do not implement it as an
+automated gate.
+
+| Narrated idea | Visual that supports it | Misleading visual to avoid |
+| --- | --- | --- |
+| Rowan makes two comments on different days | The same colleagues in a conversation and a meeting, with the exact quotes and day labels | Hostile expressions that establish an intention the story leaves uncertain |
+| An observed comment differs from a guessed motive | Separate speech and thought areas, explicitly labelled as heard and guessed | Presenting the guessed motive as something Rowan said |
+| Confirmation bias can affect which information we notice | Show criticism being noticed and positive comments being overlooked, with clear labels | A generic person reading papers with no indication of the selection involved |
+| Circumstances may help explain behaviour | Connect the character judgment to the budget problem that has not yet been checked | Presenting the budget problem as a confirmed explanation |
+| Check an explanation against relevant information | A person comparing documents or examining figures with a calculator | A decorative magnifying glass unrelated to any actual check |
+| A friend has not replied for two days | A message, a time marker and a separate label for the viewer's interpretation | Showing the friend deliberately ignoring the message when that is unknown |
+| Practise and record what you learned | A person writing in a notebook beside the three questions | Unrelated objects filling space around the exercise |
+
+For a different topic, replace the characters, props, situations and visual
+relationships with ones that explain that topic. Do not retain Rowan, workplace
+scenes, research names or this book's palette simply because the renderer has
+them. Reusing the production method does not mean reusing the subject matter.
 
 ## 2. Produce a pronunciation-aware speech track
 
@@ -119,16 +161,23 @@ so one displayed `1998` can cover both `nineteen` and `ninety-eight`. It then
 builds sentence cues and caption chunks from the first/last matching word times.
 Do not substitute proportional word-count timing for real boundaries silently.
 
-**Integration caution:** `pipeline/scriptlib.py` and the existing alignment
-proposal assume token-for-token pronunciation mapping. A replacement such as
-`1998 → nineteen ninety-eight` expands the token count. The standalone example
-handles this; do not insert its multi-token mappings into the old alignment
-path without adapting and testing that mapping too.
+**Alignment caution:** a pronunciation replacement such as
+`1998 → nineteen ninety-eight` expands the token count. The reference handles
+this through normalized character spans. Preserve that mapping when adapting
+the workflow; do not assume display and spoken tokens correspond one-to-one.
 
 Keep canonical narration, speech text, boundaries, padded scene audio, and final
 timings. Rebuilding visuals should not require synthesizing the voice again.
 
 ## 4. Make each visual element explain something
+
+The user found the text-and-diagram-only version too much like a slide deck and
+asked for sketches of people and objects. For this book, use recurring character
+sketches and relevant objects throughout the story and practice scenes. Include
+illustrations in the visual plan from the start. A successful text-only render
+is a technical baseline, not evidence that the requested visual treatment is
+complete. There is no quota of illustrated scenes: definitions and comparisons
+still need space, and some ideas are clearest as diagrams.
 
 The final palette was cream `#F5F0E6`, dark green `#213E34`, sage `#A6B59C`, pale
 sage `#E0E6D6`, and secondary green `#526858`. DejaVu Serif and DejaVu Sans were
@@ -154,6 +203,21 @@ Use consistent characters and review every asset before placing it. Generate
 art without words; place accurate labels and quotations with code. An optional
 transparent sheet can be framed into independent video views using FFmpeg crop
 and overlay filters. Preserve alpha and keep the source asset intact.
+
+Write the image brief from the scene plan: specify the people, action, relevant
+objects, expressions, palette, framing and space reserved for labels. Keep the
+same characters recognizable across scenes. A character beside a definition
+can provide context, but does not by itself explain the concept. Use accurate
+labels or a visual relationship where the explanation depends on them.
+
+Review the generated asset and a composed video frame before rendering the full
+sequence. Check the actual file's transparency and artwork bounds. For a sheet
+of illustrations, leave space between vignettes and verify each crop: an equal
+grid requested in a prompt may still contain a neighbouring character's hair or
+an object at the edge. Correct the framing or regenerate the asset. Inspect at
+phone viewing size as well as full resolution; illustrations must not obscure
+text or make definitions too small to read. Tie reveals to the narrated idea;
+movement alone does not make a static slide more informative.
 
 **A concrete failure to avoid:** the generated phone illustration acquired an
 unrequested decorative branch. The user correctly challenged it. The final
@@ -208,7 +272,18 @@ A valid MP4 is not a quality assessment. Perform distinct checks:
 5. **Visual review:** extract actual exported frames, especially the opening,
    definitions, long quotes, exercise, and closing card. Check wrapping,
    contrast, clipping, irrelevant details, and whether reveals follow speech.
-6. **Technical review:** inspect duration and streams with ffprobe; decode the
+6. **Meaning across narration and visuals:** compare every scene with the scene
+   plan and its timed narration. Check that the image supports the current idea,
+   examples are distinguishable, and pictures do not turn a possibility into a
+   fact. Check that important distinctions survive when a viewer looks at the
+   image before hearing the full explanation. If a scene fails, revise the
+   visual rather than rewriting the approved narration to fit existing artwork.
+7. **Captions and embedding:** check that captions preserve the script and follow
+   the speech. Rebalance brief trailing fragments rather than flashing a lone
+   word. For a page embed, include browser-compatible WebVTT, playback controls,
+   a transcript link and the visible fictional-example caption where applicable.
+   Verify the actual page's media paths and caption placement after publication.
+8. **Technical review:** inspect duration and streams with ffprobe; decode the
    video with FFmpeg; confirm audio/video durations and end holds agree.
 
 `audit_audio.py` decodes with FFmpeg to a NumPy float array before recognition.

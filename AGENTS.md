@@ -4,9 +4,10 @@ Read [docs/agent-video-workflow.md](docs/agent-video-workflow.md) before generat
 an authored explainer. It records the completed single-narrator workflow and
 the quality corrections from the *Why we misinterpret people* video.
 
-The Gemini/two-host proposal in `docs/design.md` and its `pipeline/` scripts are
-a separate path. The reference example in `examples/approved-narration/` uses
-Edge neural speech, Pillow, and FFmpeg. Do not imply those paths are integrated.
+The supported production path is `examples/approved-narration/`: one narrator,
+Edge neural speech, provider word timings, Pillow, and FFmpeg. `docs/design.md`
+describes its current architecture and limits. Do not restore the retired
+provider prototype or describe planned automation as implemented.
 
 - The user's current script and visual brief control the result. Do not add a
   dramatic opening, new examples, a second host, or promises of improvement to
@@ -17,6 +18,9 @@ Edge neural speech, Pillow, and FFmpeg. Do not imply those paths are integrated.
   especially dates, names, acronyms, negations, and qualifications.
 - Read the runbook's quality-review section. Never claim to have listened when
   the only check was transcription or a successful video export.
+- Plan each scene against the source idea and narration before generating art.
+  Keep characters and objects specific to the topic, and check that expressions,
+  labels and reveals do not establish claims the narration leaves uncertain.
 - Every visual element should serve the explanation. Remove irrelevant
   decoration rather than accepting it because an image generator included it.
 - Keep scene audio, word timings, and individually encoded video clips. For a
