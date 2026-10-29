@@ -2,7 +2,10 @@
 
 This is a portable version of the single-narrator workflow used for *Why we
 misinterpret people*. Read [the agent runbook](../../docs/agent-video-workflow.md)
-first. This is the repository's supported production workflow.
+first. This runnable example uses Edge speech and provider word boundaries.
+For local Qwen and the approved Q1 reference, see [the Qwen guide](../../docs/qwen-speech.md);
+that recipe does not change this example's engine. For a video accompanying a
+page, also use the [learning-aid criteria](../../docs/learning-aid-criteria.md).
 
 The renderer contains the layouts and wording for **this example**. It is not
 a universal JSON-to-video engine. For another script, adapt the `kind` handlers,

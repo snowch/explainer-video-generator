@@ -6,6 +6,12 @@ This is the production approach used for **Why we misinterpret people** on
 dark-green, and sage palette. The final requested polish was the book URL and
 copyright on the closing card; only that five-second scene was re-rendered.
 
+The later Metadata systems videos used local Qwen with the approved original
+synthetic Q1 voice, and were revised as page learning aids on 29 October 2026.
+Use [Qwen speech](qwen-speech.md) for the pinned model/reference recipe and
+[learning-aid criteria](learning-aid-criteria.md) for that viewing context. The
+Edge reference below retains its original approved voice and implementation.
+
 Use this as a repeatable reference, not a claim that a successful export has
 NotebookLM's production quality. The first versions in this session were
 rejected as rough. Improvement required a different speech engine, preserving
@@ -16,7 +22,9 @@ and adjusting the visuals to the speech.
 
 Start with [examples/approved-narration](../examples/approved-narration/README.md):
 an authored script, Edge neural speech, provider word timings, and Pillow/FFmpeg
-visuals. This is the supported production path. The renderer contains layouts
+visuals. This is the runnable Edge production path. Local Qwen/Q1 follows the
+[speech recipe](qwen-speech.md) and its linked production adapter; it uses ASR
+alignment estimates, not provider boundaries. The renderer contains layouts
 for this particular example; adapting another book requires editing those
 layouts as well as the narration. Source checks and review of the meaning across
 speech and images remain manual; no automated faithfulness gate is implemented.
@@ -75,6 +83,27 @@ the delivery format. For a standalone export, supply that context where the
 viewer will actually encounter it. These are contextual choices, not automatic
 edits to an approved script.
 
+### Reinforce the page as a learning aid
+
+For an embedded chapter video, state what readers should be able to explain or
+do afterwards. Use the [learning-aid rubric](learning-aid-criteria.md): alignment,
+clarity, added visual understanding, focus and memorability, active recall,
+application, cognitive load, engagement, accuracy, accessibility and progression.
+
+Demonstrate one difficult relationship or decision, give readers a prediction or
+explanation question, leave thinking time, then reveal and explain the answer.
+Return them to a specific example or exercise on the page. Long reference SQL,
+detailed records and full definitions may stay on the page; identify excerpts
+and keep any qualification needed to interpret the video correctly. These are
+adaptation choices, not permission to rewrite a user's approved script.
+
+The Metadata systems videos used four- to five-second response holds and a
+five-second closing card. Choose task-appropriate timing, end captions with the
+actual speech, and keep the answer out of the hold's graphics and captions.
+`hold_seconds` belongs to that Qwen adapter, not the unchanged Edge example.
+Do not infer retention or transfer from a polished export; record those outcomes
+as unassessed unless representative readers were actually checked.
+
 ### Map each scene before generating artwork
 
 Keep a short scene plan alongside the script. For each scene, record the source
@@ -100,7 +129,9 @@ them. Reusing the production method does not mean reusing the subject matter.
 
 ## 2. Produce a pronunciation-aware speech track
 
-The final successful configuration in this session was:
+### Edge reference configuration
+
+The final successful configuration for the original reference was:
 
 | Setting | Value |
 | --- | --- |
@@ -118,6 +149,24 @@ provider can supply the same audio/timing contract; document that substitution
 and check its output. Do not silently fall back to a poor voice and describe the
 result as polished. Honour the execution environment's proxy/network policy;
 the reference passes `HTTPS_PROXY` to the client when set.
+
+### Qwen/Q1 configuration
+
+For the local Qwen path, use `Qwen/Qwen3-TTS-12Hz-1.7B-Base` at
+`fd4b254389122332181a7c3db7f27e918eec64e3` and the exact approved Q1 reference.
+Q1 is an original synthetic warm British female voice, designed with
+`Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` at
+`5ecdb67327fd37bb2e042aab12ff7391903235d3`. It is not a named preset. Use one
+reusable full reference prompt; do not regenerate a design for each passage.
+
+The [Qwen guide](qwen-speech.md) contains the exact WAV/transcript hashes, pinned
+source URLs, CPU install order, runnable audio sample, provenance requirements
+and the complete production adapter. Four CPU threads, bfloat16 and batches up
+to six were used; size batches for available memory and validate a short sample.
+Keep generated audio and model downloads in ignored build storage. Preserve an
+existing project voice and report any engine substitution.
+
+### Shared pronunciation and caching contract
 
 Maintain two representations:
 
@@ -137,14 +186,16 @@ time on the complete render. Longer passages allow continuity of intonation;
 sentence-by-sentence stitching contributed to the early version's roughness.
 
 Cache audio by a hash of **spoken text, voice, rate/delivery settings, provider
-version, and boundary mode**. A cache keyed only by scene number is unsafe after
-edits. The reference example includes content-based invalidation. Hosted speech
+version, and boundary mode**. For Qwen, also include model revision, reference
+WAV/transcript hashes, generation settings, precision and threads; record actual
+SDK versions, seed and batch membership. Validate the audio hash before reuse.
+A cache keyed only by scene number is unsafe after edits. The reference example includes content-based invalidation. Hosted speech
 is not guaranteed to be bit-for-bit repeatable, so preserve approved audio.
 
 ## 3. Align against the audio, including expanded pronunciation
 
-Save provider word boundaries with each audio file. Divide the Edge offsets by
-10,000,000 to obtain seconds. Decode the audio with FFmpeg, retain a small safety
+For Edge, save provider word boundaries with each audio file. Divide the Edge
+offsets by 10,000,000 to obtain seconds. Decode the audio with FFmpeg, retain a small safety
 margin around the first/last timed word, add intentional scene padding, and
 round each scene duration **up** to a whole number of video frames. Pad with
 silence rather than cutting speech to fit the nearest frame.
@@ -166,8 +217,18 @@ Do not substitute proportional word-count timing for real boundaries silently.
 this through normalized character spans. Preserve that mapping when adapting
 the workflow; do not assume display and spoken tokens correspond one-to-one.
 
-Keep canonical narration, speech text, boundaries, padded scene audio, and final
-timings. Rebuilding visuals should not require synthesizing the voice again.
+For Qwen, independently transcribe each full passage without vocabulary hints
+or digit suppression, and preserve original ASR words/timestamps separately.
+Align ASR anchors to canonical spoken text with explicit matching coverage,
+differences and interpolated positions. Record padding offsets so excerpts and
+reveals address the actual scene audio. This is estimated ASR alignment, not
+provider timing, forced alignment or proof of spoken completeness. Never reuse
+Edge timestamps for regenerated Qwen audio. Inspect full-scene recognition and
+technical-term excerpts before rendering; rerun their freshness checks after
+speech or pronunciation changes. See the [detailed procedure](qwen-speech.md#timing-and-pronunciation-review).
+
+Keep canonical narration, speech text, boundaries or labelled estimates, padded
+scene audio and final timings. Rebuilding visuals should not require synthesizing the voice again.
 
 ## 4. Make each visual element explain something
 
@@ -283,7 +344,13 @@ A valid MP4 is not a quality assessment. Perform distinct checks:
    word. For a page embed, include browser-compatible WebVTT, playback controls,
    a transcript link and the visible fictional-example caption where applicable.
    Verify the actual page's media paths and caption placement after publication.
-8. **Technical review:** inspect duration and streams with ffprobe; decode the
+8. **Learning-aid review:** check the stated objective, meaningful visual
+   demonstration, response holds, answer reveal and return-to-page activity.
+   Inspect actual encoded frames and the player at desktop and phone widths,
+   including control/caption overlays while paused. Check that the exercise
+   links work and record any reader understanding/recall/transfer observations
+   separately from design judgments.
+9. **Technical review:** inspect duration and streams with ffprobe; decode the
    video with FFmpeg; confirm audio/video durations and end holds agree.
 
 `audit_audio.py` decodes with FFmpeg to a NumPy float array before recognition.
@@ -326,7 +393,20 @@ diagram sources, intentional assets or reproducible asset instructions, and
 the commands needed to rebuild. Keep large rendered files, model weights,
 downloaded reference videos, and caches out of git unless specifically wanted.
 
-Record what was actually tested and the remaining limitations. In this case:
+When revising a series, finish and validate each chapter before moving on.
+If the agreed workflow includes a separate commit and merge per chapter, complete
+that merge first, then begin the next. Follow existing publication authorization
+and repository rules; this adds no separate confirmation requirement.
+
+For a Qwen handoff, retain the exact model revision, approved reference identity,
+spoken/display text, generated audio, ASR originals, estimated timing/coverage,
+pronunciation pack, response holds, SDK settings and actual review method. For a
+page learning aid, retain the objective, scene-to-source plan, review findings
+and exercise connection. Distinguish technical checks, automated recognition,
+human listening and observed learner outcomes.
+
+Record what was actually tested and the remaining limitations. For the original
+Edge reference:
 
 - Piper and the initial sentence-by-sentence Kokoro attempt did not meet the
   user's quality expectations; do not present them as equivalent alternatives.
