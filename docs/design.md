@@ -1,9 +1,11 @@
 # Authored explainer video design
 
-Status: one supported production workflow, using Edge neural speech and
-Pillow/FFmpeg. See [the agent workflow](agent-video-workflow.md) for operational
-instructions and [the reference example](../examples/approved-narration/README.md)
-for runnable commands.
+Status: a runnable Edge example and a documented local Qwen/Q1 production
+recipe, sharing an authored single-narrator and Pillow/FFmpeg approach. See
+[the agent workflow](agent-video-workflow.md) for operational instructions and [the reference example](../examples/approved-narration/README.md)
+for runnable Edge commands. [Qwen speech](qwen-speech.md) records the pinned
+models, exact Q1 voice reference and external production adapter; the Edge
+example has no Qwen engine switch.
 
 ## Content and artwork
 
@@ -11,6 +13,11 @@ The author controls the script, definitions, examples and visual brief. Read the
 source before adapting a video. Record each scene's source idea, exact narration,
 on-screen words, relevant illustration or diagram, and reveal cues. Review
 whether the image could imply a claim or motive that the narration leaves open.
+
+For an embedded learning aid, record an observable objective, a prediction or
+explanation opportunity and a return to the page exercise. Use the
+[learning-aid rubric](learning-aid-criteria.md) to assess the result and distinguish
+design judgments from measured recall or transfer.
 
 The scene plan is currently a human-reviewed document, not an enforced schema.
 The narration format is an ordered JSON array of `{kind, text}` entries.
@@ -24,6 +31,8 @@ art without text, put exact labels in the renderer, and inspect composed frames
 for misleading expressions, cropped artwork and readability.
 
 ## Speech and timing
+
+### Runnable Edge example
 
 `synthesize.py` sends a complete scene passage to `edge-tts`, using
 `en-GB-SoniaNeural` at the reference rate of `-2%`. The provider returns audio and
@@ -40,6 +49,28 @@ exercise holds, and rounded up to whole video frames. The outputs include the
 combined narration, per-scene audio, cues, timings and SRT captions. The hosted
 speech service is not deterministic or an offline dependency; preserve outputs
 needed for exact revisions.
+
+### Local Qwen production recipe
+
+Metadata systems uses pinned `Qwen/Qwen3-TTS-12Hz-1.7B-Base` with one reusable
+full prompt built from the approved Q1 synthetic reference WAV and matching
+transcript. VoiceDesign generated the original audition; it is not rerun for
+each scene. Keep model revisions, exact reference hashes, spoken text,
+generation parameters, batch membership and actual runtime versions in provenance.
+
+Qwen provides audio without provider word boundaries. The production adapter
+keeps unprompted full-scene ASR separately from estimated canonical alignment,
+including numeric-spelling reconciliation, unmatched/interpolated positions,
+matching coverage and padding offsets. These estimates drive captions and cues;
+they cannot prove every submitted word was spoken or certify pronunciation.
+Pronunciation excerpts receive separate screening before rendering. Preserve
+original ASR and distinguish both checks from actual listening.
+
+The adapter's `hold_seconds` field adds deliberate silence after question speech
+and captions, before an answer scene. That field is not implemented by this
+repository's Edge example; adapt its existing pause behaviour explicitly when
+porting a learning aid. Complete setup, hashes, sample code and the pinned
+external implementation are in [qwen-speech.md](qwen-speech.md).
 
 ## Rendering
 
@@ -61,15 +92,21 @@ updated speech, timing and captions; do not treat them as a visual-only remux.
 
 ## Verification and limits
 
-- Boundary-text equality verifies the timing metadata against the submitted
+- Edge boundary-text equality verifies the timing metadata against the submitted
   script, not what a human listener actually hears.
 - The audit helper transcribes generated audio with faster-whisper. It can
   misrecognize names or hallucinate words in silence; investigate discrepancies
   and distinguish this check from listening.
+- Qwen ASR/canonical alignment is estimated, not provider timing or forced
+  alignment. A 100% character match is not proof of phonetics or natural delivery.
 - Review the narration and image together for every scene. A technically valid
   video can still teach the wrong thing through an expression, label or reveal.
 - Inspect representative exported frames, caption timing, media streams and a
   full FFmpeg decode. Verify the published page and media paths when deploying.
+
+Review learning-aid holds, answer timing, page exercise links and the actual
+player at desktop and phone widths. Reader recall and transfer require separate
+observations; a valid media file does not establish learning effectiveness.
 
 There is no automated source-faithfulness judge, general chapter ingestion step
 or universal scene-layout engine. Those capabilities must not be described as

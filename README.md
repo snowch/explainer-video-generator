@@ -1,23 +1,30 @@
 # explainer-video-generator
 
 Create illustrated chapter videos from an authored script. The supported
-workflow uses one narrator, Edge neural speech, provider word timings, and
-Pillow/FFmpeg visuals. Keep narration, on-screen wording and artwork tied to the
-chapter's meaning.
+workflow uses one narrator and Pillow/FFmpeg visuals. Speech can use the runnable
+Edge example with provider word timings, or the documented local Qwen/Q1 recipe
+with independently checked ASR alignment. Keep narration, on-screen wording and
+artwork tied to the chapter's meaning.
 
 Start with [the agent workflow](docs/agent-video-workflow.md), then follow
 [the runnable example](examples/approved-narration/README.md).
-[AGENTS.md](AGENTS.md) gives agents their working instructions.
+[AGENTS.md](AGENTS.md) gives agents their working instructions. Read the
+[Qwen model and Q1 voice guide](docs/qwen-speech.md) for that production path,
+and the [page learning-aid criteria](docs/learning-aid-criteria.md) when a video
+should reinforce its accompanying page.
 
 ## Production workflow
 
 1. Read the chapter and establish the exact narration, audience, visual brief,
-   and whether the video stands alone or is embedded in a page.
+   and whether the video stands alone or reinforces a page. For a learning aid,
+   state one observable learning objective and a memorable takeaway.
 2. Map each scene's source idea, narration, on-screen wording and relevant
-   illustration or diagram. Check what a viewer could wrongly infer.
-3. Generate complete-passage speech and use the provider's word boundaries to
-   align captions and visual reveals. Keep display text separate from spoken
-   pronunciation substitutions.
+   illustration or diagram. Check what a viewer could wrongly infer. For a page
+   learning aid, plan a prediction/explanation question, thinking time, a later
+   answer and a specific return to the page exercise.
+3. Generate complete-passage speech. Use provider boundaries for Edge, or fresh
+   independent ASR alignment estimates for Qwen; label the timing source and
+   review discrepancies. Keep display text separate from pronunciation text.
 4. Render scenes independently with consistent characters, readable definitions,
    and topic-specific sketches and diagrams.
 5. Review exported frames and actual audio. Check the meaning across speech and
@@ -31,7 +38,7 @@ It runs without generated artwork for portability. For an illustrated brief,
 that fallback is a technical baseline; supply reviewed artwork as described in
 its README and the workflow.
 
-## Build the reference
+## Build the Edge reference
 
 Install FFmpeg and DejaVu fonts, then run from the repository root:
 
@@ -58,12 +65,19 @@ python examples/approved-narration/audit_audio.py
 The first audit downloads a Whisper model. Automated recognition supplements
 review; it is not proof of exact pronunciation or a human listening pass.
 
+For the approved original synthetic Q1 voice, use the pinned model, reference
+hashes and sample recipe in [the Qwen guide](docs/qwen-speech.md). The Edge
+commands above do not automatically select Qwen. Preserve an existing project
+voice; model choice and reference identity belong in the content contract.
+
 ## Repository layout
 
 | Location | Purpose |
 | --- | --- |
 | `docs/agent-video-workflow.md` | Authoring, artwork, synthesis, review and handoff instructions |
 | `docs/design.md` | Current architecture and its limits |
+| `docs/qwen-speech.md` | Pinned Qwen models, approved Q1 reference, setup, synthesis and timing review |
+| `docs/learning-aid-criteria.md` | Page alignment, clarity, recall, application, accessibility and review evidence |
 | `examples/approved-narration/` | Script, voice settings, renderer and audit/remux helpers |
 | `diagrams/` | Editable diagram examples |
 | `mockups/` | Earlier visual experiments; separate from the production renderer |
